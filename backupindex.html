@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Lily Qian D3.js hw1 </title>
+	<!--<script defer src="scripts/bar5.js"></script>-->
+	<style>
+  .halo {
+      font-weight: 700;
+      fill: none;
+      stroke: white;
+      stroke-width:4px;
+      font-size: 14px; 
+    }
+    .text {
+      font-weight: 700;
+      fill: #777;
+      stroke: none;
+      stroke-width:0px;
+      font-size: 14px; 
+    }
+    .bartextformat{
+    font-weight: 500;
+      fill: purple;
+      stroke: none;
+      stroke-width:0px;
+      font-size: 12px; 
+    }
+.states {
+  fill: #ccc;
+}
+.state-borders {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.airport-arcs {
+  display: none;
+  fill: none;
+  stroke: #000;
+}
+.airport-cell {
+  fill: none;
+  pointer-events: all;
+}
+.airports circle {
+  fill: purple;
+  stroke: #fff;
+  pointer-events: none;
+}
+.airports bar {
+  fill: purple;
+}
+.airport:hover .airport-arcs {
+  display: inline;
+}
+svg:not(:hover) .airport-cell {
+  stroke: #000;
+  stroke-opacity: .2;
+}
+</style>
+
+	<meta name="description" content="D3 Tutorial Template">
+	<meta name="author" content="Northwestern University">
+	
+	<link rel="stylesheet" href="https://raw.githubusercontent.com/Qinita/examples2/master/css/reset.css">
+	<link rel="stylesheet" href="https://raw.githubusercontent.com/Qinita/examples2/master/css/bargraph.css">
+	
+	<script src="http://d3js.org/d3.v3.js"></script>
+	<div id="toptextcontainer"><h2>Lily Qian Zhao</h2></div>
+	<p id="clabel1">D3.js Flight Visualization</p>
+	<p id="clabel2">Map here!</p>
+	<div id="chart0" class="toshow"> </div>
+
+    <p id="clabel3">Welcome welcome!</p>
+    <div id="chart4" class="toshow"> </div>
+<!-- 
+	<p id="clabel1">This is bar chart</p>
+    <div id="chart2" class="toshow"> </div>
+     <p id="clabel1">This is the data</p>
+    <div id="chart3" class="toshow"> </div>
+ -->
+	<!-- <script defer src="airports/airports.js"></script>-->
+	
+</head>
+<body>
+	<div id="fixedheader">
+		<span class="textspan">Flight between airports</span>
+<!-- 		<div id="b1" class="headerbutton">BUTTON1</div>
+		<div id="b2" class="headerbutton">BUTTON2</div>
+		<div id="b3" class="headerbutton">BUTTON3</div>
+		<div id="b4" class="headerbutton">BUTTON4</div>
+		<div id="b5" class="headerbutton">BUTTON5</div> -->
+
+	</div>
+
+
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://d3js.org/topojson.v1.js"></script>
+    <script src="https://rawgit.com/Qinita/examples2/master/airports/queue.js"></script>
+
+
+<script>
+var width = 960;
+var height = 500;
+var projection = d3.geo.albers()
+    .translate([width / 2, height / 2])
+    .scale(1080);
+var path = d3.geo.path()
+    .projection(projection);
+var voronoi = d3.geom.voronoi()
+    .x(function(d) { return d.x; })
+    .y(function(d) { return d.y; })
+    .clipExtent([[0, 0], [width, height]]);
+var svg = d3.select("#chart0").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+queue()
+    .defer(d3.json, "https://cdn.rawgit.com/Qinita/examples2/master/airports/us.json")
+    .defer(d3.csv, "https://cdn.rawgit.com/Qinita/examples2/master/airports/airports.csv")
+    .defer(d3.csv, "https://cdn.rawgit.com/Qinita/examples2/master/airports/flights.csv")
+    .await(ready);
+function ready(error, us, airports, flights) {
+  var airportById = d3.map(),
+      positions = [];
+  airports.forEach(function(d) {
+    airportById.set(d.iata, d);
+    d.outgoing = [];
+    d.incoming = [];
+  });
+  flights.forEach(function(flight) {
+    var source = airportById.get(flight.origin),
+        target = airportById.get(flight.destination),
+        link = {source: source, target: target};
+    source.outgoing.push(link);
+    target.incoming.push(link);
+  });
+  airports = airports.filter(function(d) {
+    if (d.count = Math.max(d.incoming.length, d.outgoing.length)) {
+      d[0] = +d.longitude;
+      d[1] = +d.latitude;
+      var position = projection(d);
+      d.x = position[0];
+      d.y = position[1];
+      return true;
+    }
+  });
+  voronoi(airports)
+      .forEach(function(d) { d.point.cell = d; });
+  svg.append("path")
+      .datum(topojson.feature(us, us.objects.land))
+      .attr("class", "states")
+      .attr("d", path);
+  svg.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a, b) { return a !== b; }))
+      .attr("class", "state-borders")
+      .attr("d", path);
+  var airport = svg.append("g")
+      .attr("class", "airports")
+    .selectAll("g")
+      .data(airports.sort(function(a, b) { return b.count - a.count; }))
+    .enter().append("g")
+      .attr("class", "airport").on("click", function(d){
+      	        document.getElementById("clabel3").innerHTML = "The airport you choose is "+d.iata;
+                d3.selectAll("text").remove(); 
+                airport.append("svg:text")
+                .attr("x", d.x)
+                .attr("y", d.y)
+                .attr("class", "halo")
+                .text(d.iata);
+                airport.append("svg:text")
+                .attr("x", d.x)
+                .attr("y", d.y)
+                .attr("class", "text")
+                .text(d.iata);
+                
+                var data;
+                if ( d.outgoing.length > 20 ) {
+                                          data = d.outgoing.splice( 0, 20 );
+                                      }
+                                      else {
+                                         data = d.outgoing;
+                                      }
+                
+                data = data.sort(function(a,b) { return parseFloat(b.target.count) - parseFloat(a.target.count) } );
+                
+                adjustScales(data);
+                createBarChart(data);
+                
+                //updateBars();
+              })
+  airport.append("path")
+      .attr("class", "airport-cell")
+      .attr("d", function(d) { return d.cell.length ? "M" + d.cell.join("L") + "Z" : null; });
+      
+  airport.append("g")
+      .attr("class", "airport-arcs")
+      
+    .selectAll("path")
+      .data(function(d) { return d.outgoing; })
+    .enter().append("path")
+      .attr("d", function(d) { return path({type: "LineString", coordinates: [d.source, d.target]}); });
+     // console.log(d.target)
+  airport.append("circle")
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+      .attr("r", function(d, i) { return Math.sqrt(d.count); });
+  var newtest = airport.append('text')
+     .attr("x",function(d,i){return d.x;})
+     .attr("y",function(d,i) {return d.y;});
+  var barchart = airport.append('g')
+     .attr("x",function(d,i){return d.x;})
+     .attr("y",function(d,i) {return d.y;});
+  //    //.on("mouseover", function(d, i) { d3.select("#footer span").text(d.name); });
+  //    //.on("click", function(d,i) {d3.text.(d.iata); });
+  //    //.text(function(d){return d.iata; })
+  
+     function testfunction(d,i){
+	     console.log(d.iata)
+	     newtest.text(function(d,i){return d.iata; });
+	 // newtest.text(function(d){return d.source; });
+     //.attr("x",function(d){return d.x;})
+     //.attr("y",function(d) {return d.y;})
+     //.on("mouseover", function(d, i) { d3.select("#footer span").text(d.name); });
+     //.on("click", function(d,i) {d3.text.(d.iata); });
+     //.text(function(d){return d.iata; })
+} 
+var c1;
+var svg1 = d3.select("#chart2").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+var svg2 = d3.select("#chart4").append("svg")
+    .attr("width", 0)
+    .attr("height", 0);
+var xAxis;
+var yAxis;
+var dataset = [];
+// var dataset = [ {"key":"a","v":25},
+// 	{"key":"b","v":25},
+// 	{"key":"c","v":25},
+// 	{"key":"d","v":25},
+// 	{"key":"e","v":25},
+// 	{"key":"f","v":25},
+// 	{"key":"gg","v":25},
+// 	{"key":"h","v":25},
+// 	{"key":"ii","v":25},
+// 	{"key":"j","v":25},
+// 	{"key":"k","v":25},
+// 	{"key":"l","v":25},
+// 	{"key":"m","v":25},
+// 	{"key":"n","v":25},
+// 	{"key":"o","v":25},
+// 	{"key":"p","v":25},
+// 	{"key":"q","v":25},
+// 	{"key":"rr","v":25},
+// 	{"key":"ss","v":25},
+// 	{"key":"t","v":25},];
+	
+var barConfig = {
+	width :800,
+	height : 700,
+	leftMargin : 100,
+	topMargin : 100,
+	barWidth : 30.0,
+	chartWidth: 600,
+	chartHeight : 400
+}
+// Attach the functions to the buttons
+// d3.select("#b1").on("click", updateBars);
+// d3.select("#b2").on("click", randomBars);
+// d3.select("#b3").on("click", deleteBar);
+// d3.select("#b4").on("click", addBar);
+// // Change the labels on the buttons
+// document.getElementById("b1").innerHTML="Update";
+// //document.getElementById("b2").innerHTML="Random";
+// document.getElementById("b3").innerHTML="Delete";
+// document.getElementById("b4").innerHTML="Insert";
+// Selection of the div into which we will insert the chart 
+c1 = d3.select("#chart4");
+// Append an SVG to the div with an offset from the upper left corner
+// svg1 = c1.append("svg")
+// 	.attr("width", barConfig.width)
+// 	.attr("height", barConfig.height)
+// 	.append("g")
+// 	.attr("transform", "translate(" + barConfig.leftMargin + "," + barConfig.topMargin + ")")
+// 	;
+svg2 = c1.append("svg")
+	.attr("width", barConfig.width)
+	.attr("height", barConfig.height)
+	.append("g")
+	.attr("transform", "translate(" + barConfig.leftMargin + "," + barConfig.topMargin + ")")
+	;
+svg2.selectAll("text.btext")
+	.data(dataset,function(d){return d.target.iata;})
+	.enter().append("text")
+	.attr("class", "btext")
+	.attr("x", function(d,i){return xScale(i)-20;})
+	.attr("y", function(d,i){return yScale(d.target.count-30);})
+	.text(function(d,i){return d.target.iata;})
+	;
+// // Compute the scales
+// adjustScales();
+// // Create axes and append to SVG
+// xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+// yAxis = d3.svg.axis().scale(yScale).orient("left");
+// svg1.append("g").attr("class", "xaxis axis")
+// 	.attr("transform", "translate(0," + barConfig.chartHeight + ")")
+// 	.call(xAxis)
+// 	;
+// svg1.append("g").attr("class", "yaxis axis").call(yAxis);
+// Creation of DOM elements from initial data
+// svg1.selectAll("rect")
+// 	.data(dataset,function(d){return d.key;})
+// 	.enter().append("rect")
+// 	.attr("class", "bar")
+// 	.attr("x", function(d,i){return xScale(i);})
+// 	.attr("y", function(d,i){return yScale(d.v);})
+// 	.attr("width", function(d,i){return barConfig.chartWidth/dataset.length-4;})
+// 	.attr("height", function(d,i) {return barConfig.chartHeight-yScale(d.v);})
+// 	;
+	
+// 	dumpDataset();
+//read csv
+// var yTextPadding = 20;
+// svg.selectAll(".bartext")
+// .data(dataset)
+// .enter()
+// .append("text")
+// .attr("class", "bartext")
+// .attr("text-anchor", "middle")
+// .attr("fill", "white")
+// .attr("x", function(d,i) {
+//     return x(i)+x.rangeBand()/2;
+// })
+// .attr("y", function(d,i) {
+//     return height-y(d)+yTextPadding;
+// })
+// .text(function(d){
+//      return d.target.iata;
+// });
+// ----- Functions -----
+// Creation of DOM elements from initial data
+function createBarChart( dataset ) {
+ svg2.selectAll("rect").remove( );
+ var dataJoin = svg2.selectAll("rect")
+       .data(dataset,function(d){return d.target.iata;});
+       
+ 
+ dataJoin.enter().append("rect")
+       .attr("fill", function(d,i) {return "rgb(0, 0, " + (d.target.count%35) + ")";})
+       .attr("x", function(d,i){return xScale(i);})
+       .attr("y", function(d,i){return yScale(d.target.count);})
+       .attr("width", function(d,i){return barConfig.chartWidth/20-4;})
+       .attr("height", function(d,i) {return barConfig.chartHeight-yScale(d.target.count);});
+       
+   ;
+}
+// Adjust the X and Y scales
+function adjustScales( dataset ) {
+   svg2.selectAll( ".axis" ).remove( );
+   var textJoin = svg2.selectAll("text.btext")
+		.data(dataset,function(d){return d.target.iata;});
+   var dataJoin = svg2.selectAll("rect")
+       .attr("fill", function(d) {return "rgb(0, 0, " + (d.target.count%35) + ")";})
+       .data(dataset,function(d){return d.target.iata;})
+       ;
+   
+   yScale = d3.scale.linear()
+               .domain([0, d3.max(dataset, function(d){return d.target.count;})])
+               .range([barConfig.chartHeight, 0])
+               ;
+       xScale = d3.scale.linear()
+               .domain([0, dataset.length])
+               .range([0, barConfig.chartWidth])
+               ;
+     // Create axes and append to SVG
+ xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+ yAxis = d3.svg.axis().scale(yScale).orient("left");
+ 
+ svg2.append("g")
+   .data(dataset)
+   .attr("fill", function(d) {return "rgb(0, 0, " + (d.target.count %35) + ")";});
+ svg2.append("g").attr("class", "xaxis axis")
+       .attr("transform", "translate(0," + barConfig.chartHeight + ")")
+       .call(xAxis)
+       ;
+ svg2.append("g").attr("class", "yaxis axis").call(yAxis);
+ textJoin.enter().append("text")
+        .attr("class", "halo")
+		.attr("class", "bartextformat")
+		.attr("fill", function(d) {return "rgb(0, 0, " + (d.target.count%35) + ")";})
+		.attr("x", function(d,i){return xScale(i)+10;})
+		.attr("y", function(d,i){return yScale(d.target.count+10);})
+		.text(function(d,i){return d.target.iata;})
+		
+	// A transition is applied to smootly change the data
+dataJoin.transition().duration(500)
+		.attr("x", function(d,i){return xScale(i);})
+		.attr("fill", function(d) {return "rgb(0, 0, " + (d.target.count%35) + ")";})
+		.attr("y", function(d,i){return yScale(d.target.count+10);})
+		.attr("width", function(d,i){return barConfig.chartWidth/dataset.length-4;})
+		.attr("height", function(d,i) {return barConfig.chartHeight-yScale(d.target.count);})
+		;
+	textJoin.transition().duration(500)
+	    .attr("class", "halo")
+		.attr("class", "bartextformat")
+		.attr("x", function(d,i){return xScale(i);})
+		.attr("y", function(d,i){return yScale(d.target.count+10);})
+		.text(function(d,i){return d.target.iata;})
+		.attr("fill", function(d) {return "rgb(0, 0, " + (d.target.count%35) + ")";})
+		;
+	// The "exit" set is transitioned to zero height and removed
+	dataJoin.exit().transition().duration(500)
+		.attr("y", function(d,i){return barConfig.chartHeight;})
+		.attr("height", function(d,i) {return 0;})
+		.remove()
+		;
+	textJoin.exit().transition().duration(500)
+		.attr("y", function(d,i){return barConfig.chartHeight+15;})
+		.remove();
+		;
+  // svg2.selectAll("text")
+  //  .data(dataset)
+  //  .enter()
+  //  .append("text")
+  //  .text(function(d,i) {
+  //       return d.target.iata;
+  //       console.log(d.target);
+  //  })
+  //  .attr("x", function(d, i) {
+  //       return xScale(i) + 5;  // +5
+  //  })
+  //  .attr("y", function(d) {
+  //       return yScale(d.target.count) + 15;              // +15
+  //  });
+  //  .attr("font-family", "sans-serif")
+  //  .attr("font-size", "11px")
+  //  .attr("fill", "white");
+}
+// Populate the data array with random values  from 5 to 30
+function randomBars() {
+	var k;
+	for (k=0; k<dataset.length; k++) {
+		dataset[k].v = d.target.count[i];
+	}
+	dumpDataset();
+}
+// // Update the DOM elements to reflect changes in the data array
+// function updateBars() {
+// 	// Re-compute the scales
+// 	adjustScales();
+// 	// adjust the axes
+// 	xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+// 	yAxis = d3.svg.axis().scale(yScale).orient("left");
+// 	svg1.selectAll("g.xaxis.axis").call(xAxis);
+// 	svg1.selectAll("g.yaxis.axis").call(yAxis);
+// 	// Bind the new dataset
+// 	var dataJoin = svg1.selectAll("rect")
+// 		.data(dataset,function(d){return d.key;});
+		
+// 	// The "enter" set consists of new data in the data array
+// 	// The bar is initially set with zero height so it can transition later
+// 	dataJoin.enter().append("rect")
+//        .attr("x", function(d,i){return xScale(i);})
+//        .attr("y", function(d,i){return yScale(d.target.count);})
+//        .attr("width", function(d,i){return barConfig.chartWidth/dataset.length-1;})
+//        .attr("height", function(d,i) {return barConfig.chartHeight-yScale(d.target.count);})
+//    ;
+// 	// The "update" set now includes the "enter" set
+// 	// A transition is applied to smootly change the data
+// 	dataJoin.transition().duration(500)
+// 		.attr("x", function(d,i){return xScale(i);})
+// 		.attr("y", function(d,i){return yScale(d.v);})
+// 		.attr("width", function(d,i){return barConfig.chartWidth/dataset.length-4;})
+// 		.attr("height", function(d,i) {return barConfig.chartHeight-yScale(d.v);})
+// 		;
+// 	// The "exit" set is transitioned to zero height and removed
+// 	dataJoin.exit().transition().duration(500)
+// 		.attr("y", function(d,i){return barConfig.chartHeight;})
+// 		.attr("height", function(d,i) {return 0;})
+// 		.remove()
+// 		;
+// }
+// // Delete one data array element at the second position
+// function deleteBar() {
+// 	dataset.splice(1,1);
+// 	dumpDataset();
+// }
+// // Add one random value data element at the 3rd position of the data array
+// var newIdCtr = 10;
+// function addBar() {
+// 	var dat ={};
+// 	dat.key = "b" + String(newIdCtr++);
+// 	dat.v = Math.random()*25.0 + 5.0;
+// 	dataset.splice(2,0, dat);
+// 	dumpDataset();
+// }
+// // Adjust the X and Y scales
+// function adjustScales() {
+// 	yScale = d3.scale.linear()
+// 		.domain([0, d3.max(dataset, function(d){return d.v;})])
+// 		.range([barConfig.chartHeight, 0])
+// 		;
+// 	xScale = d3.scale.linear()
+// 		.domain([0, dataset.length])
+// 		.range([0, barConfig.chartWidth])
+// 		;
+// }
+// //Display dataset on 2nd chart
+// function dumpDataset()
+// {
+// 	var e = document.getElementById("chart3");
+// 	e.style.fontFamily='Courier';
+// 	e.style.fontSize='12px';
+// 	e.innerHTML = '';
+// 	for (var i=0; i<dataset.length; i++) {
+// 		var s = JSON.stringify(dataset[i]);
+// 		e.innerHTML += s+'<br/>'
+// 	}
+// }
+}
+// var ddd;
+// function dumpdata(d,i){ddd = d; console.log(d);}
+</script>
+
+<!-- 
+	<svg width="500" height="200">
+			<line x1="10" y1="10" x2="190" y2="190" stroke="blue" stroke-width="3" />
+			<line x1="190" y1="190" x2="400" y2="0" stroke="red" stroke-width="3" />
+			<rect x="200" y="10" width="100" height="100" fill="orange" />
+			<circle cx="300" cy="140" r="50" fill="violet" />
+			<text x="208" y="100" fill="charcoal" font-size="42" font-weight="bold" font-family="Helvetica">Lorem ipsum</text>
+		</svg>
+    
+	<div id="fixedfooter">Footer</div> -->
+</body>
+
+</html>
